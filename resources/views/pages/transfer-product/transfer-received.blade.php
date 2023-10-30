@@ -1,0 +1,227 @@
+@extends('layouts.master')
+@section('title', 'Transfer Received List')
+
+@section('page-header')
+    <header class="header bg-ui-general">
+        <div class="header-info">
+            <h1 class="header-title">
+                <strong>Transfer Received</strong>
+            </h1>
+        </div>
+    </header>
+@endsection
+
+@section('content')
+    <div class="col-12" style="">
+        <div class="card card-body mb-2">
+            <form action="#">
+                <div class="form-row">
+                    <div class="form-group col-md-3">
+                        <input type="text"
+                               class="form-control" name="bill_no" placeholder="Bill Number" autocomplete="off" value="{{ request('bill_no') }}">
+                    </div>
+                    <div class="form-group col-md-3">
+                        <input type="text" data-provide="datepicker" data-date-today-highlight="true"
+                               data-orientation="bottom" data-date-format="yyyy-mm-dd" data-date-autoclose="true"
+                               class="form-control" name="start_date" placeholder="Start Date" autocomplete="off" value="{{ request('start_date') }}">
+                    </div>
+                    <div class="form-group col-md-3">
+                        <input type="text" data-provide="datepicker" data-date-today-highlight="true"
+                               data-orientation="bottom" data-date-format="yyyy-mm-dd" data-date-autoclose="true"
+                               class="form-control" name="end_date" placeholder="End Date" autocomplete="off" value="{{ request('end_date') }}">
+                    </div>
+
+ 
+                    <div class="form-group col-md-3">
+                        <select name="product_id" id="" class="form-control" data-provide="selectpicker"
+                                data-live-search="true" data-size="10">
+                            <option value="">Select Product</option>
+                            @foreach ($products as $item)
+                                <option value="{{ $item->id }}" {{ request('product_id')==$item->id?'SELECTED':'' }}>{{ $item->name .' - '. $item->code }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                </div>
+                <div class="form-row mt-2">
+                    <div class="form-group col-12">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fa fa-sliders"></i>
+                            Filter
+                        </button>
+                        <a href="{{ route('product-transfer.index') }}" class="btn btn-info">Reset</a>
+                        <a href="" class="btn btn-primary pull-right" onclick="window.print()">Print</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+
+        <div class="card print_area">
+            <h4 class="card-title"><strong>Transfer Received</strong></h4>
+
+            <div class="card-body">
+                @if($product_transfers->count() > 0)
+                    <div class="">
+                        <table class="table table-responsive table-bordered" data-provide="">
+                            <thead>
+                            <tr class="bg-primary">
+                                <th>#</th>
+                                <th>Invoice No.</th>
+                                <th>Transfer Shop</th>
+                                <th>Transfer By</th>
+                                <th>Received By</th>
+                                <th>Items</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>#</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach($product_transfers as $key => $transfer)
+                                <tr>
+                                    <td>{{ (isset($_GET['page']))? ($_GET['page']-1)*$product_transfers->count()+$key+1 : $key+1 }}</td>
+                                    <td>{{ $transfer->id }}</td>
+                                    <td>{{ $transfer->transferred_shop->name }}</td>
+                                    <td>{{ $transfer->transferred_by->name() }}</td>
+                                    <td>
+                                        @if($transfer->received_by)
+                                        {{ $transfer->received_by_user->name()  }}
+                                        @else
+                                        No Received
+                                        @endif
+                                        </td>
+                                    <td>
+                                        <ul class="product-list">
+                                            @foreach ($transfer->items()->with('product')->get() as $item)
+                                                @php
+                                                    $product=$item->product;
+                                                @endphp
+                                                
+                                                @if($product)
+                                                <li>{{ $product->name." Code: ".$product->code."  *".$product->readable_qty($item->qty) }}</li>
+                                                @endif
+                                                
+                                            @endforeach
+                                        </ul>
+                                    </td>
+                                    <td>{{ date('d M, Y', strtotime($transfer->transfer_date)) }}</td>
+ 
+                                    <td>
+                                        @if($transfer->status ==1)
+                                            <span class="badge badge- pill badge-success">Accept</span>
+                                        @else
+                                            <span class="badge badge- pill badge-info">Pending</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($transfer->status ==0)
+                                        <a class="memo px-1" data-id="{{$transfer->id }}"  href="javascript:void(0)" id="transfer_received"><i class="fa fa-check text-success" style="font-size: 30px" aria-hidden="true"></i></a>
+                                        <a class="delete" href="{{ route('product-transfer.destroy',$transfer->id) }}"><i class="fa fa-times text-danger" style="font-size: 30px" aria-hidden="true"></i></a>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+
+                            </tbody>
+        
+                        </table>
+                        {!! $product_transfers->appends(Request::except("_token"))->links() !!}
+                    </div>
+                @else
+                    <div class="alert alert-danger text-center" role="alert">
+                        <strong>You have no Product Transfers List </strong>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+
+<div class="modal fade" id="crud-modal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+     <form action="{{route('transfer_received_store')}}" id="" method="POST">
+          @csrf
+          <div class="modal-dialog modal-sm">
+               <div class="modal-content">
+                    <div class="modal-header">
+                         <h5 class="modal-title" id="exampleModalLabel">Are You Sure</h5>
+                         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                              <span aria-hidden="true">&times;</span>
+                         </button>
+                    </div>
+                    <div class="modal-body">
+                         <input type="hidden" id="received_id" name="id" class="form-control">
+                    </div>
+                    <div class="modal-footer">
+                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                         <button type="submit" class="btn btn-primary">Accept</button>
+                    </div>
+               </div>
+          </div>
+     </form>
+</div>
+@endsection
+
+@section('styles')
+    <style>
+        .top-summary td{
+                width:12.5%;
+                font-size:1.5em;
+                vertical-align: middle !important;
+        }
+
+        .table td,
+        .table th {
+            padding: 7px;
+            vertical-align: baseline;
+            border-top: 1px solid #e9ecef;
+            text-align: center;
+        }
+
+        .card {
+            margin-bottom: 0px;
+        }
+
+        .card-body {
+            padding: 15px;
+        }
+
+        .center-cell-text {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .table-cell {
+            display: table-cell;
+            min-height: 126px;
+        }
+
+
+        .product-list li {
+            text-align: left;
+        }
+
+    </style>
+
+@endsection
+
+@section('scripts')
+    @include('includes.delete-alert')
+    @include('includes.placeholder_model')
+    <script src="{{ asset('js/modal_form.js') }}"></script>
+    <script>
+error=false
+
+$(document).ready(function () {
+/* Edit memo */
+$('body').on('click', '#transfer_received', function () {
+var transfer_id = $(this).data('id');
+    $.get('received/'+transfer_id+'/accept', function (data) {
+    $('#posCrudModal').html("Transfer Received");
+    $('#btn-update').val("Update");
+    $('#crud-modal').modal('show');
+    $('#received_id').val(data.id);
+    })
+});
+});
+</script>
+@endsection
